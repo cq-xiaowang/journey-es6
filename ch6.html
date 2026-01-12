@@ -1,0 +1,91 @@
+<!DOCTYPE>
+<html>
+    <body>
+        <h1>复合引用类型练习</h1>
+    </body>
+
+    <script>
+        /*
+    1、Object创建与使用
+    */
+    let person = new Object();
+    person.name = "张三";
+    person.age = 30;
+    console.log(`姓名: ${person.name}, 年龄: ${person.age}`);
+    /*
+    2、对象字面量创建与使用
+    */
+    let student = {
+        name: "李四",
+        age: 12,
+        grade: "初一",
+        score: "99"
+    }
+    console.log(`学生信息 - 姓名: ${student.name}, 年龄: ${student.age}, 年级: ${student.grade}, 分数: ${student.score}`);
+
+    // Array数组使用
+    let fruits = new Array(3);
+    fruits[0] = "香蕉";
+    fruits[1] = "苹果";
+    fruits[2] = "梨";
+
+    console.log('fruits.valueOf()是：');
+    console.log(fruits.valueOf());
+    console.log('fruits.toString()是：');
+    console.log(fruits.toString());
+    fruits.push("葡萄");
+    new_fruits = fruits.concat(["橘子", "西瓜"]);
+    console.log('new_fruits是：');
+    console.log(new_fruits);
+    fruits.pop();
+    console.log('fruits.pop()后fruits是：');
+    console.log(fruits);
+
+    // shift() 方法用于把数组的第一个元素从其中删除
+    first_item = fruits.shift();
+    console.log(`fruits.shift()移除的第一个元素是：${first_item}`);
+
+    console.log("水果列表:");
+    for (let i = 0; i < fruits.length; i++) {
+        console.log(`- ${fruits[i]}`);
+    }
+
+    let color = ['红色', '黄色', '蓝色'];
+    console.log(`第2种颜色是：${color[1]}`);
+
+    const m = new Map().set(1, 2).set(3,4).set(2,5);
+    console.log(Array.from(m));
+    console.log(`模板字符串为：${Array.from(m)}`);
+    
+    const options = [,,,,,];
+    console.log(`数组options的长度为：${options.length}`);
+    options[0] = 1;
+    options[1] = "apple";
+    console.log(`数组options的内容为：${options}`);
+    console.log(options);
+    console.log(JSON.stringify(options));
+
+    if(options instanceof Array){
+        console.log('options是一个数组');
+    } else {
+        console.log('options不是一个数组');
+    }
+
+    let nums = [10, 7, 3, 5, 29, 15];
+    // 自定义比较函数：升序排列
+    function compare(a, b){
+        if (a < b){
+            return 1;
+        } else if(a > b){
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+
+    nums.sort(compare);
+    console.log(`排序后的nums数组为：${nums}`);
+
+
+    </script>
+</html>
