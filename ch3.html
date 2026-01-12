@@ -17,19 +17,106 @@
             <li>第二步</li>
             <li>第三步</li>
         </ol>
+    
+        <h3>第三节：所有关键字</h3>
 
+    <!-- 控制流 -->
+    <div class="keyword-module">
+    <h4>控制流</h4>
+    <ul class="keyword-group">
+        <li>break</li>
+        <li>case</li>
+        <li>catch</li>
+        <li>continue</li>
+        <li>default</li>
+        <li>do</li>
+        <li>else</li>
+        <li>finally</li>
+        <li>for</li>
+        <li>if</li>
+        <li>return</li>
+        <li>switch</li>
+        <li>throw</li>
+        <li>try</li>
+        <li>while</li>
+    </ul>
+    </div>
 
-        <a> 我是a标签</a>
-        <p>当前第 <span id="idx">0</span>张图片</p>
-        <button type="button" onclick="alert('Hello!')"> 点击我展示1个弹窗</button>
+    <!-- 声明 -->
+    <div class="keyword-module">
+    <h4>声明与作用域</h4>
+    <ul class="keyword-group">
+        <li>const</li>
+        <li>let</li>
+        <li>var</li>
+        <li>function</li>
+        <li>class</li>
+    </ul>
+    </div>
 
-        <button type="button" onclick="clickCounter()"> 快速切图</button>
-        <div class="grid-container">
-            <img id="myImage" src="https://picsum.photos/600/400?random=66" alt="随机风景图">
-        </div>
+    <!-- 面向对象 & 模块 -->
+    <div class="keyword-module">
+    <h4>面向对象与模块</h4>
+    <ul class="keyword-group">
+        <li>extends</li>
+        <li>super</li>
+        <li>new</li>
+        <li>this</li>
+        <li>static</li>
+        <li>import</li>
+        <li>export</li>
+        <li>from</li>
+    </ul>
+    </div>
 
-        <footer>
-            <p>版权所有 &copy; 2024</p>
+    <!-- 异步 -->
+    <div class="keyword-module">
+    <h4>异步编程</h4>
+    <ul class="keyword-group">
+        <li>async</li>
+        <li>await</li>
+    </ul>
+    </div>
+
+    <!-- 类型与值 -->
+    <div class="keyword-module">
+    <h4>类型与字面量</h4>
+    <ul class="keyword-group">
+        <li>typeof</li>
+        <li>instanceof</li>
+        <li>in</li>
+        <li>void</li>
+        <li>null</li>
+        <li>true</li>
+        <li>false</li>
+    </ul>
+    </div>
+
+    <!-- 保留字 -->
+    <div class="keyword-module">
+    <h4>严格模式保留字</h4>
+    <ul class="keyword-group">
+        <li>implements</li>
+        <li>interface</li>
+        <li>package</li>
+        <li>private</li>
+        <li>protected</li>
+        <li>public</li>
+        <li>yield</li>
+    </ul>
+    </div>
+
+    <a> 我是a标签</a>
+    <p>当前第 <span id="idx">0</span>张图片</p>
+    <button type="button" onclick="alert('Hello!')"> 点击我展示1个弹窗</button>
+
+    <button type="button" onclick="clickCounter()"> 快速切图</button>
+    <div class="grid-container">
+        <img id="myImage" src="https://picsum.photos/600/400?random=66" alt="随机风景图">
+    </div>
+
+    <footer>
+        <p>版权所有 &copy; 2024</p>
     </body>
 </html>
 
@@ -51,6 +138,49 @@
         background-color: #D9730D;
         padding: 10px;
     }
+</style>
+
+<style>
+  .keyword-module {
+    margin-bottom: 16px;
+  }
+
+  .keyword-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)); /* 强制3列，内容不溢出 */
+    gap: 6px; /* 行列间距统一为6px */
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-width: 40%;
+  }
+
+  .keyword-group li {
+    background: #f8f9f9;
+    padding: 4px 8px;           /* 更小的内边距 */
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 1em;         /* 稍小字体 */
+    text-align: left;           /* 从左对齐（非居中）*/
+    color: #222;
+    border: 1px solid #e0e0e0;
+    white-space: nowrap;        /* 防止换行 */
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .keyword-group li:hover {
+    background: #eef4ff;
+    border-color: #c0d4ff;
+    cursor: default;
+  }
+
+  /* 手机端：1列 */
+  @media (max-width: 500px) {
+    .keyword-group {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
 
 <script>
