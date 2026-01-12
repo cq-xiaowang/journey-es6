@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+    <body>
+        <h1>ES6规范实践</h1>
+        <h2>第一节</h2>
+        <p>html常用标签实践</p>
+        <ul>
+            <li>香蕉</li>
+            <li>苹果</li>
+            <li>梨</li>
+        </ul>
+
+        <h2>第二节</h2>
+        <p>Hello World</p>
+        <ol>
+            <li>第一步</li>
+            <li>第二步</li>
+            <li>第三步</li>
+        </ol>
+
+
+        <a> 我是a标签</a>
+        <p>当前第 <span id="idx">0</span>张图片</p>
+        <button type="button" onclick="alert('Hello!')"> 点击我展示1个弹窗</button>
+
+        <button type="button" onclick="clickCounter()"> 快速切图</button>
+        <div class="grid-container">
+            <img id="myImage" src="https://picsum.photos/600/400?random=66" alt="随机风景图">
+        </div>
+
+        <footer>
+            <p>版权所有 &copy; 2024</p>
+    </body>
+</html>
+
+<!-- 绝对定位 -->
+<style>
+    .absolute-img {
+        position: absolute;
+        top: 200px;
+        left: 50px;
+    }
+</style>
+
+<!-- CSS Grid布局（现代方式）-->
+<style>
+    .grid-container {
+        display: grid;
+        grid-template-columns: auto auto auto;
+        gap: 10px;
+        background-color: #D9730D;
+        padding: 10px;
+    }
+</style>
+
+<script>
+    console.log("I'm is a script say: hello world");
+    const message = "This is a message from the script.";
+    // alert(message); // 弹出提示框
+
+    let count = 0;
+    let timeoutId;
+    function clickCounter() {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(()=>{
+            count++;
+            document.getElementById("idx").innerText = count;
+            const img = document.getElementById("myImage");
+            img.src = `https://picsum.photos/600/400?random=${count}`;
+            console.log(`当前图片索引为: ${count}`);
+        }, 100);
+    }
+</script>
