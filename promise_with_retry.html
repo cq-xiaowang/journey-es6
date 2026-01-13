@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>批量图片加载（带重试）</title>
+  <style>
+    .img-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 20px;
+    }
+
+    .img-item {
+      width: 200px;
+      height: 150px;
+      border: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f9f9f9;
+      position: relative;
+    }
+
+    .img-item img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: cover;
+    }
+
+    .retry-count {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      font-size: 12px;
+      color: #888;
+    }
+
+    .error {
+      color: #e74c3c;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .loading {
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="img-container" id="container"></div>
+
+  <script>
+    // ====== 配置 ======
+    const MAX_RETRY = 3;        // 最大重试次数
+    const RETRY_DELAY = 1000;   // 重试间隔（ms）
+    const TIMEOUT = 5000;       // 单次请求超时
+
+    // ====== 工具函数 ======
+
+    /**
+     * 带超时的 fetch 封装
+     */
+    function fetchWithTimeout(url, timeout = TIMEOUT) {
+      return Promise.race([
+        fetch(url),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Request timeout')), timeout)
+        )
+      ]);
+    }
+
+    /**
+     * 渲染单个图片项（初始状态为 loading）
+     */
+    function createImageItem(url) {
+      const item = document.createElement('div');
+      item.className = 'img-item';
+      item.dataset.url = url;
+
+      const img = document.createElement('img');
+      const retryLabel = document.createElement('div');
+      retryLabel.className = 'retry-count';
+      retryLabel.textContent = '0';
+
+      item.innerHTML = '<div class="loading">Loading...</div>';
+      item.appendChild(retryLabel);
+
+      return { item, img, retryLabel };
+    }
+
+    /**
+     * 加载并渲染单张图片（支持自动重试）
+     */
+    async function loadAndRenderImage(url, container) {
+      const { item, img, retryLabel } = createImageItem(url);
+      container.appendChild(item);
+
+      let attempt = 0;
+      const updateRetryCount = () => {
+        retryLabel.textContent = attempt;
+      };
+
+      try {
+        // 使用 Promise + 递归重试逻辑
+        const blobUrl = await new Promise((resolve, reject) => {
+          const tryLoad = async () => {
+            attempt++;
+            updateRetryCount();
+
+            try {
+              const response = await fetchWithTimeout(url);
+              if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+              }
+              const blob = await response.blob();
+              const objectUrl = URL.createObjectURL(blob);
+              resolve(objectUrl);
+            } catch (error) {
+              if (attempt < MAX_RETRY) {
+                setTimeout(tryLoad, RETRY_DELAY);
+              } else {
+                reject(new Error(`Failed after ${MAX_RETRY} retries: ${error.message}`));
+              }
+            }
+          };
+
+          tryLoad(); // 启动首次尝试
+        });
+
+        // 成功：替换为真实图片
+        img.src = blobUrl;
+        item.replaceChildren(img, retryLabel);
+
+        // 可选：图片加载完成后释放 Object URL（避免内存泄漏）
+        img.onload = () => URL.revokeObjectURL(img.src);
+      } catch (error) {
+        // 失败：显示错误信息
+        item.innerHTML = `<div class="error">❌ 加载失败<br>${error.message}</div>`;
+        item.appendChild(retryLabel);
+        console.error('最终加载失败:', url, error);
+      }
+    }
+
+    /**
+     * 批量加载图片（并行发起，独立处理）
+     */
+    async function loadImages(urls) {
+      const container = document.getElementById('container');
+      container.innerHTML = '';
+
+      urls.forEach(url => {
+        loadAndRenderImage(url, container).catch(console.error);
+      });
+    }
+
+    // ====== 使用示例 ======
+    const imageUrls = [
+      'https://picsum.photos/800/400?random=1',
+      'https://picsum.photos/800/400?random=2',
+      'https://picsum.photos/800/400?random=3',
+      'https://invalid-domain.example/404.jpg', // 故意制造失败
+      'https://picsum.photos/800/400?random=5'
+    ];
+
+    loadImages(imageUrls);
+  </script>
+</body>
+</html>

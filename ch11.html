@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>第11章：期约与异步函数 — 前端异步使用场景</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #333;
+      background-color: #fafafa;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #2c3e50;
+    }
+    h2 {
+      margin-top: 40px;
+      margin-bottom: 16px;
+      color: #3498db;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 8px;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 10px;
+    }
+    .note {
+      background-color: #e8f4fc;
+      padding: 12px;
+      border-left: 4px solid #3498db;
+      margin-top: 20px;
+      font-style: italic;
+      color: #2c3e50;
+    }
+    .flow-diagram {
+      background-color: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+      padding: 16px;
+      margin: 20px 0;
+      overflow-x: auto;
+      font-family: Consolas, Monaco, 'Courier New', monospace;
+      font-size: 14px;
+      white-space: pre;
+      line-height: 1.5;
+    }
+    .explanation-list {
+      padding-left: 20px;
+    }
+    .explanation-list li {
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>第11章：期约与异步函数</h1>
+
+  <h2>前端开发中适合使用异步的典型场景</h2>
+  <p>在前端开发中，合理使用异步（如 <code>Promise</code>、<code>async/await</code>）能有效避免页面卡顿，提升用户体验。以下是最常见的适用场景：</p>
+
+  <ul>
+    <li><strong>网络请求</strong>：调用 API 获取或提交数据（如用户信息、商品列表、表单提交等）。</li>
+    <li><strong>用户交互中的延迟操作</strong>：如搜索防抖、按钮防重复点击、表单异步校验等。</li>
+    <li><<strong>动态加载资源</strong>：图片懒加载、路由/组件按需加载（如 <code>React.lazy</code>）、动态导入模块。</li>
+    <li><strong>定时任务与轮询</strong>：定期检查状态（如支付结果）、自动保存草稿、倒计时等。</li>
+    <li><strong>本地存储操作</strong>：大量数据建议使用异步的 IndexedDB；小量数据可用 <code>localStorage</code>（但注意性能）。</li>
+    <li><strong>Canvas / WebGL / 视频处理</strong>：复杂图形计算应分帧处理或移至 Web Worker 避免阻塞主线程。</li>
+    <li><strong>Web Workers 通信</strong>：将加密、压缩、大文件解析等耗时任务放到子线程，通过异步消息通信。</li>
+    <li><strong>动画与异步协同</strong>：在动画结束后异步加载新内容或执行清理逻辑。</li>
+  </ul>
+
+  <div class="note">
+    💡 <strong>黄金法则</strong>：只要某个操作可能导致页面“卡一下”（哪怕只有几十毫秒），就应考虑使用异步优化。
+  </div>
+
+  <h2>以网络请求为例：从发起 fetch 到拿到响应的完整异步流程</h2>
+  <p>以下展示了浏览器内部如何协作完成一次 <code>fetch()</code> 请求：</p>
+
+  <div class="flow-diagram">
+[JS 主线程]
+  ↓ 调用 fetch('/api')
+  → Blink 创建 Promise P
+  → 向 Network Service 发送请求（带唯一 ID: req123）
+  → 返回 Promise P 给 JS
+  → JS 继续执行（P 状态: pending）
+
+[Network Service 线程/进程]
+  ↓ 处理 DNS/TCP/TLS/HTTP
+  ↓ 收到完整响应
+  → 序列化响应头、状态码等元数据
+  → body 保持为流（避免大内存拷贝）
+  → 通过 IPC 发送消息：{ id: 'req123', response: {...} }
+
+[JS 主线程]
+  ← 收到 IPC 消息
+  → 查找 req123 对应的 Promise P
+  → 构造 JavaScript Response 对象（包装流和元数据）
+  → 调用 P.resolve(response)
+  → V8 将 P 的 .then() 回调加入微任务队列
+  → 当前宏任务结束后，事件循环检查并执行微任务队列
+     → 执行 .then() 回调拿到 response
+  </div>
+
+  <p><strong>关键步骤解释：</strong></p>
+  <ul class="explanation-list">
+    <li>在主线程中发起 <code>fetch</code> 请求后，Blink（渲染引擎的一部分）会创建一个 Promise 对象，并向 Network Service 发送网络请求。此过程是异步的，不会阻塞主线程。</li>
+    <li>Network Service 独立于主线程运行，处理包括 DNS 查询、TCP 连接建立、TLS 加密握手以及 HTTP 协议通信在内的所有网络操作。完成后，它将响应序列化并通过 IPC 机制发回给主线程。</li>
+    <li>主线程接收到 Network Service 的响应后，找到对应的 Promise 实例，并使用响应数据解析这个 Promise。然后，V8 引擎将任何注册在该 Promise 上的 <code>.then()</code> 回调作为微任务添加到微任务队列中。</li>
+    <li>最后，在当前宏任务结束时，JavaScript 的事件循环机制确保所有的微任务（如 Promise 回调）被依次执行，使得回调函数能够获取到网络请求的结果。</li>
+  </ul>
+
+</body>
+
+
+<script>
+    function double(value) {
+        setTimeout(()=>{
+            try {
+                console.log('hello world!');
+                let nums = [];
+                for (let i = 0; i < value; i++) {
+                    nums.push(1000000);
+                }
+            } catch (e) {
+                console.error('发生严重错误:', e);
+            } finally {
+                console.log('操作完成');
+            }
+        }, 1000);
+    }
+
+    double(5);
+
+    let p = new Promise((resolve, reject)=>{setTimeout(resolve, 1000, 3)});
+    // 如果需要接收Promise结果,需要使用.then
+    p.then((x)=>{console.log(x)});
+    // 以上方式，结构松散；可以使用async/await语法糖
+
+    const userPromise = Promise.resolve({
+        // resolved值可以是：字符串、数字、布尔、对象、null、undifined等
+        // 还可以是Promise实例
+        // 也可以是json对象
+        id: 1001,
+        name: 'Alice',
+        profile: {
+            email: 'alice@example.com',
+            age: 30
+        }
+    });
+
+    userPromise.then(user => {
+        console.log(user.name);
+        console.log(user.profile.email);
+    });
+
+    // 图片 URL 列表
+    const urls = [
+        'https://picsum.photos/800/400/?random=5',
+        'https://picsum.photos/800/400/?random=6',
+        'https://picsum.photos/800/400/?random=7'
+    ];
+
+    // 封装1个fetch
+    function fetchImage(url, timeout = 5000) {
+        return fetch(url).then(response => {
+            if (!response.ok) {
+                throw new Error('网络响应失败');
+            }
+            return response.blob();
+        });
+    }
+
+    Promise.all(urls.map(url => fetchImage(url)))
+        .then(
+            blobs => {
+                console.log('所有图片已加载:');
+                blobs.forEach((blob, index) => {
+                    const imgURL = URL.createObjectURL(blob);
+                    const img = document.createElement('img');
+                    img.src = imgURL;
+                    img.style.margin = '10px';
+                    document.body.appendChild(img);
+                });
+            }
+        )
+        .catch(error => {
+            console.error('至少有1个请求失败:', error);
+        });
+
+</script>
+</html>
