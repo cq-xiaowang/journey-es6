@@ -2,16 +2,17 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>批量图片加载（带重试）</title>
+  <title>流式图片加载（按响应顺序填充网格）</title>
   <style>
     .img-container {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
       padding: 20px;
+      width: 100%;
     }
 
-    .img-item {
+    .img-slot {
       width: 200px;
       height: 150px;
       border: 1px solid #eee;
@@ -20,9 +21,10 @@
       justify-content: center;
       background: #f9f9f9;
       position: relative;
+      overflow: hidden;
     }
 
-    .img-item img {
+    .img-slot img {
       max-width: 100%;
       max-height: 100%;
       object-fit: cover;
@@ -36,33 +38,28 @@
       color: #888;
     }
 
-    .error {
-      color: #e74c3c;
+    .loading, .error {
       font-size: 12px;
       text-align: center;
+      color: #666;
     }
 
-    .loading {
-      color: #666;
-      font-size: 14px;
+    .error {
+      color: #e74c3c;
     }
   </style>
 </head>
 <body>
   <div class="img-container" id="container"></div>
 
-  <h5>const timeoutId = setTimeout(callback, delay, ...args);具体用法</h5>
-  <a>setTimeout 是 JavaScript 中用于延迟执行代码的核心函数，常用于实现延时、轮询、防抖、重试等场景。</a>
   <script>
     // ====== 配置 ======
-    const MAX_RETRY = 3;        // 最大重试次数
-    const RETRY_DELAY = 1000;   // 重试间隔（ms）
-    const TIMEOUT = 5000;       // 单次请求超时
-
-    // ====== 工具函数 ======
+    const MAX_RETRY = 3;
+    const RETRY_DELAY = 1000;
+    const TIMEOUT = 5000;
 
     /**
-     * 带超时的 fetch 封装
+     * 带超时的 fetch
      */
     function fetchWithTimeout(url, timeout = TIMEOUT) {
       return Promise.race([
@@ -74,99 +71,105 @@
     }
 
     /**
-     * 渲染单个图片项（初始状态为 loading）
+     * 创建一个空的网格槽（slot）
      */
-    function createImageItem(url) {
-      const item = document.createElement('div');
-      item.className = 'img-item';
-      item.dataset.url = url;
+    function createSlot() {
+      const slot = document.createElement('div');
+      slot.className = 'img-slot';
+      slot.innerHTML = '<div class="loading">等待图片...</div>';
+      return slot;
+    }
+
+    // ====== 全局状态 ======
+    const TOTAL_IMAGES = 50; // 可改为 100，但建议先测试小数量
+    const container = document.getElementById('container');
+
+    // 预创建所有槽位（固定布局，无空洞）
+    const slots = [];
+    for (let i = 0; i < TOTAL_IMAGES; i++) {
+      const slot = createSlot();
+      container.appendChild(slot);
+      slots.push(slot);
+    }
+
+    let nextSlotIndex = 0; // 下一个可用槽位索引
+    let completedCount = 0; // 已成功/失败处理的数量
+
+    /**
+     * 安全地将图片填入下一个空槽
+     */
+    function fillNextSlot(blobUrl, url) {
+      if (nextSlotIndex >= TOTAL_IMAGES) return; // 安全边界
+
+      const slot = slots[nextSlotIndex];
+      nextSlotIndex++;
 
       const img = document.createElement('img');
-      const retryLabel = document.createElement('div');
-      retryLabel.className = 'retry-count';
-      retryLabel.textContent = '0';
+      img.src = blobUrl;
+      slot.replaceChildren(img);
 
-      item.innerHTML = '<div class="loading">Loading...</div>';
-      item.appendChild(retryLabel);
-
-      return { item, img, retryLabel };
+      // 可选：释放内存
+      img.onload = () => URL.revokeObjectURL(blobUrl);
     }
 
     /**
-     * 加载并渲染单张图片（支持自动重试）
+     * 处理加载失败（可选：也占位，或跳过）
      */
-    async function loadAndRenderImage(url, container) {
-      const { item, img, retryLabel } = createImageItem(url);
-      container.appendChild(item);
+    function handleFailure(url, error) {
+      console.warn('跳过失败图片:', url, error.message);
+      // 如果你想让失败图片也占位，可以在这里 fillNextSlot 一个占位图
+    }
 
+    /**
+     * 加载单张图片（独立重试逻辑）
+     */
+    async function loadImage(url) {
       let attempt = 0;
-      const updateRetryCount = () => {
-        retryLabel.textContent = attempt;
-      };
 
-      try {
-        // 使用 Promise + 递归重试逻辑
-        const blobUrl = await new Promise((resolve, reject) => {
-          const tryLoad = async () => {
-            attempt++;
-            updateRetryCount();
+      while (attempt <= MAX_RETRY) {
+        attempt++;
+        try {
+          const response = await fetchWithTimeout(url);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
 
-            try {
-              const response = await fetchWithTimeout(url);
-              if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-              }
-              const blob = await response.blob();
-              const objectUrl = URL.createObjectURL(blob);
-              resolve(objectUrl);
-            } catch (error) {
-              if (attempt < MAX_RETRY) {
-                setTimeout(tryLoad, RETRY_DELAY);
-              } else {
-                reject(new Error(`Failed after ${MAX_RETRY} retries: ${error.message}`));
-              }
-            }
-          };
-
-          tryLoad(); // 启动首次尝试
-        });
-
-        // 成功：替换为真实图片
-        img.src = blobUrl;
-        item.replaceChildren(img, retryLabel);
-
-        // 可选：图片加载完成后释放 Object URL（避免内存泄漏）
-        img.onload = () => URL.revokeObjectURL(img.src);
-      } catch (error) {
-        // 失败：显示错误信息
-        item.innerHTML = `<div class="error">❌ 加载失败<br>${error.message}</div>`;
-        item.appendChild(retryLabel);
-        console.error('最终加载失败:', url, error);
+          // 成功：填入下一个槽
+          fillNextSlot(blobUrl, url);
+          completedCount++;
+          return;
+        } catch (error) {
+          if (attempt > MAX_RETRY) {
+            handleFailure(url, error);
+            completedCount++;
+            return;
+          }
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        }
       }
     }
 
-    /**
-     * 批量加载图片（并行发起，独立处理）
-     */
-    async function loadImages(urls) {
-      const container = document.getElementById('container');
-      container.innerHTML = '';
-
-      urls.forEach(url => {
-        loadAndRenderImage(url, container).catch(console.error);
-      });
+    // ====== 启动并行请求 ======
+    const imageUrls = [];
+    for (let i = 1; i <= TOTAL_IMAGES; i++) {
+      imageUrls.push(`https://picsum.photos/200/150?random=${i}&t=${Date.now()}`);
     }
 
-    // ====== 使用示例 ======
-    const imageUrls = [
-      'https://picsum.photos/800/400?random=1',
-      'https://picsum.photos/800/400?random=2',
-      'https://picsum.photos/800/400?random=3',
-      'https://invalid-domain.example/404.jpg', // 故意制造失败
-      'https://picsum.photos/800/400?random=5'
-    ];
+    // 所有请求并行发起！
+    imageUrls.forEach(url => {
+      loadImage(url).catch(err => {
+        console.error('未捕获错误:', err);
+        completedCount++;
+      });
+    });
 
-    loadImages(imageUrls);
+    // 可选：监控完成状态
+    const checkAllDone = setInterval(() => {
+      if (completedCount >= TOTAL_IMAGES) {
+        clearInterval(checkAllDone);
+        console.log('✅ 所有图片处理完毕');
+      }
+    }, 500);
   </script>
 </body>
 </html>
