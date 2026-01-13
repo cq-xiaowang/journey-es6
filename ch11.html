@@ -196,5 +196,16 @@
             console.error('至少有1个请求失败:', error);
         });
 
+    async function sleep(delay) {
+      return new Promise((resolve) => setTimeout(resolve, delay));
+    }
+
+    async function foo() {
+      const t0 = Date.now();
+      await sleep(1000);
+      console.log(Date.now() - t0);
+    }
+
+    foo();
 </script>
 </html>
